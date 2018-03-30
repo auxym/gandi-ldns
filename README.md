@@ -1,74 +1,67 @@
-gandi-ddns
+gandi-ldns
 ==========
 
-Simple quick & dirty script to update DNS A record of your domain dynamically using gandi.net's API.  It is very similar to no-ip and dyndns et al where you can have a domain on the internet which points at your computer's IP address, except it is free (once you have registered the domain) and does not suffer from any forced refreshing etc.  
+Simple quick & dirty script to update DNS A record of your domain dynamically
+using gandi.net's API.  It is very similar to no-ip and dyndns et al where you
+can have a domain on the internet which points at your computer's IP address,
+except it is free (once you have registered the domain) and does not suffer
+from any forced refreshing etc.
 
-This was designed specifically with Raspberry Pi servers in mind, but could be used anywhere.  
+This fork is originally based on 
+[matt1's gandi-ddns script](https://github.com/matt1/gandi-ddns), however, it
+it modified to use Gandi's new "LiveDNS" API instead of the old XML-RPC API. 
+The major differences are:
 
-Every time the script runs it will get the current domain config from gandi.net's API and look for the IP in the A record for the domain (default name for the record is '@' but you can change that if you want to).  It will then get your current external IP from a public "what is my ip" site.  Once it has both IPs it will compare what is in the DNS config vs what your IP is, and update the DNS config for the domain as appropriate so that it resolves to your current IP address.
+* Uses the LiveDNS API and therefore requires your LiveDNS API key, which is
+  different from the XML-RPC key.
 
-The configuration is stored in the script directory under the file `config.txt`. The syntax is the standard Python configuration file, and the format is the following:
+* Only retains compatibility with Python 3.3+, as Python 2.7 will be officially
+  retired in 2020.
+
+* Dependent on the excellent [Requests](http://docs.python-requests.org/)
+  library.
+
+This version is mostly compatible with the original config file format,
+only the API Key and API URL need to be changed (see `config.example.txt`).
+
+Every time the script runs it will get the current domain config from
+gandi.net's API and look for the IP in the A record for the domain (default
+name for the record is '@' but you can change that if you want to).  It will
+then get your current external IP from a public "what is my ip" site.  Once it
+has both IPs it will compare what is in the DNS config vs what your IP is, and
+update the DNS config for the domain as appropriate so that it resolves to your
+current IP address.
+
+Setup
+--------------
+
+Ensre you have Python 3.3+ installed, as well as Requests. If you are running
+a Linux distribution, Requests can likely be installed from your distribution's
+repositories.
+
+On Arch-based distributions:
+
+```sh
+pacman -S python-requests
 ```
-[local]
-# gandi.net API (Production) key
-apikey = <CHANGE ME>
-# Domain
-domain = <CHANGE ME>
-# A-record name
-a_name = @
-# TTL (seconds = 5 mintes to 30 days)
-ttl = 900
-# Production API
-api = https://rpc.gandi.net/xmlrpc/
-# Host which IP should be changed
-host = localhost
+
+On Debian-based distributions (Ubuntu, Mint, etc):
+
+```sh
+apt install python3-requests
 ```
 
-- Do not forget to replace the values marked with `<CHANGE ME>` with your 24-character API key and domain.
-- You can have more than one config section (`[local]` above) if you need to update more than one domain/a_name.
-- `host` is either `localhost` in which case the script will fetch the current external address, or any other public name. Using an other ddns account will allow you to sync it with Gandi (useful when you are not running on the same IP than the one you want to update).
+Then, simply download/clone the contents of this repository to a location
+of your choice.
+
+You should then copy `config.example.txt` to `config.txt` and, at a minimum,
+modify the values for `domain` and `apikey`. If you want to edit the DNS
+record for a subdomain, you should also edit the `a_name` entry.
 
 Usage
------
-You will need to make sure that your domain is registered on gandi.net, and that you are using the gandi.net DNS servers (if you are using the default gandi.net zone for other domains you have on gandi.net, you might want to create a dedicated zone for the domain you will be using).  You'll also need to register for the API to get a key.  
+-----------
 
-Once you have the production key (not the test environment key) and your domain on gandi.net, edit the 'apikey' and 'domain' variables in the script appropriately.
+The script can be simply ran as `python3 gandi-ldns.py` and takes no arguments. The
+config.txt file in the script folder will be used.
 
-Once you have done this you can then set up the script to run via crontab:
-
-```
-sudo crontab -e
-```
-
-Then add the following line so that the script is run after a reboot:
-
-```
-@reboot python /home/pi/gandi-ddns.py &
-```
-
-And then to make it check for a new IP every 15 mintes you can add:
-
-```
-*/15 * * * * python /home/pi/gandi-ddns.py
-```
-You can then start and/or reload the cron config:
-
-```
-sudo /etc/init.d/cron start
-sudo /etc/init.d/cron reload
-
-```
-
-FAQ
----
-**I am getting a python trace about ```Error on object : OBJECT_FQDN (CAUSE_BADPARAMETER) [string '<change me>' does not match '^(?:(?!-)[-a-zA-Z0-9]{1,63}(?<!-)(\\.|$)){2,}$']```?**
-
-You need to make sure you set the ```domain``` variable to match your domain name (no www), e.g. 'example.com'.
-
-**I am getting a python trace about ```Error on object : OBJECT_STRING (CAUSE_BADPARAMETER) [string 'OmQUMmhelfrbXQyA3R4I6Ma' does not match '^[a-z0-9]{24}$']```?**
-
-You need to make sure you enter the correct gandi.net production API key.
-
-**I am getting a python trace about ```'Error on object : OBJECT_ACCOUNT (CAUSE_NORIGHT) [Invalid API key]```?**
-
-Double-check you got the right gandi.net API key.  Double-check that you are using a production key!
+To run periodically, you can use cron or systemd timers.

@@ -1,0 +1,10 @@
+[local]
+# CHANGE to Gandi LiveDNS API key
+apikey = xxxxxxxxxxxxxxxxxxxxxxxx
+# CHANGE to your domain name
+domain = example.com
+
+a_name = @
+ttl = 10800
+api = https://dns.api.gandi.net/api/v5
+host = localhost
