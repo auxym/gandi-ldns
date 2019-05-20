@@ -94,7 +94,7 @@ def main():
             current_ip = get_ip()
 
         if zone_ip.strip() == current_ip.strip():
-            sys.exit()
+            continue
         else:
             print('DNS Mistmatch detected: A-record: ',
                   zone_ip, ' WAN IP: ', current_ip)
