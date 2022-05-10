@@ -81,8 +81,8 @@ def read_config(config_path):
 
 
 def main():
-    SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-    path = os.path.join(SCRIPT_DIR, "config.txt")
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    path = os.path.join(script_dir, "config.txt")
     config = read_config(path)
     if not config:
         sys.exit("please fill in the 'config.txt' file")
