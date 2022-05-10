@@ -3,6 +3,7 @@
 
 # Standard library
 import configparser
+import ipaddress
 import os
 import socket
 import sys
@@ -43,11 +44,19 @@ def get_ip():
         # Could be any service that just gives us a simple raw
         # ASCII IP address (not HTML etc)
         resp = requests.get("https://api.ipify.org")
+        resp.raise_for_status()
+        ip = resp.text
     except requests.exceptions.HTTPError:
-        print("Unable to external IP address.")
+        print("Unable to fetch external IP address from ipify API.")
         sys.exit(2)
 
-    return resp.text
+    try:
+        ip = ipaddress.ip_address(ip)
+    except ValueError:
+        print("Invalid external IP address returned by ipify API")
+        sys.exit(2)
+
+    return str(ip)
 
 
 def change_zone_ip(section, new_ip):
@@ -97,14 +106,15 @@ def main():
             continue
         else:
             print(
-                "DNS Mistmatch detected: A-record: ",
+                "DNS Mistmatch detected:  A-record:",
                 zone_ip,
-                " WAN IP: ",
+                " WAN IP:",
                 current_ip,
             )
+            sys.exit()
             change_zone_ip(config[section], current_ip)
             zone_ip = get_zone_ip(config[section])
-            print("DNS A record update complete - set to ", zone_ip)
+            print("DNS A record update complete - set to: ", zone_ip)
 
 
 if __name__ == "__main__":
