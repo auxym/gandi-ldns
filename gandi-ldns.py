@@ -111,7 +111,6 @@ def main():
                 " WAN IP:",
                 current_ip,
             )
-            sys.exit()
             change_zone_ip(config[section], current_ip)
             zone_ip = get_zone_ip(config[section])
             print("DNS A record update complete - set to: ", zone_ip)
