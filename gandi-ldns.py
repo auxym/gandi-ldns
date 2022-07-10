@@ -11,6 +11,15 @@ from urllib.parse import urljoin
 
 # Third-party
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+MAX_RETRIES = Retry(
+    # try again after 5, 10, 20 seconds for specified HTTP status codes
+    total=3,
+    backoff_factor=10,
+    status_forcelist=[408, 429, 500, 502, 503, 504],
+)
 
 
 def get_zone_ip(section):
@@ -21,7 +30,9 @@ def get_zone_ip(section):
 
     ip = "0.0.0.0"
 
-    resp = requests.get(api_url, headers={"X-Api-Key": section["apikey"]})
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=MAX_RETRIES))
+    resp = session.get(api_url, headers={"X-Api-Key": section["apikey"]})
     resp.raise_for_status()
 
     current_zone = resp.json()
@@ -43,7 +54,9 @@ def get_ip():
     try:
         # Could be any service that just gives us a simple raw
         # ASCII IP address (not HTML etc)
-        resp = requests.get("https://api.ipify.org")
+        session = requests.Session()
+        session.mount("https://", HTTPAdapter(max_retries=MAX_RETRIES))
+        resp = session.get("https://api.ipify.org")
         resp.raise_for_status()
         ip = resp.text
     except requests.exceptions.HTTPError:
