@@ -3,6 +3,7 @@
 
 # Standard library
 import configparser
+import ipaddress
 import os
 import socket
 import sys
@@ -10,6 +11,15 @@ from urllib.parse import urljoin
 
 # Third-party
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+MAX_RETRIES = Retry(
+    # try again after 5, 10, 20 seconds for specified HTTP status codes
+    total=3,
+    backoff_factor=10,
+    status_forcelist=[408, 429, 500, 502, 503, 504],
+)
 
 
 def get_zone_ip(section):
@@ -20,7 +30,9 @@ def get_zone_ip(section):
 
     ip = "0.0.0.0"
 
-    resp = requests.get(api_url, headers={"X-Api-Key": section["apikey"]})
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=MAX_RETRIES))
+    resp = session.get(api_url, headers={"X-Api-Key": section["apikey"]})
     resp.raise_for_status()
 
     current_zone = resp.json()
@@ -42,12 +54,22 @@ def get_ip():
     try:
         # Could be any service that just gives us a simple raw
         # ASCII IP address (not HTML etc)
-        resp = requests.get("https://api.ipify.org")
+        session = requests.Session()
+        session.mount("https://", HTTPAdapter(max_retries=MAX_RETRIES))
+        resp = session.get("https://api.ipify.org")
+        resp.raise_for_status()
+        ip = resp.text
     except requests.exceptions.HTTPError:
-        print("Unable to external IP address.")
+        print("Unable to fetch external IP address from ipify API.")
         sys.exit(2)
 
-    return resp.text
+    try:
+        ip = ipaddress.ip_address(ip)
+    except ValueError:
+        print("Invalid external IP address returned by ipify API")
+        sys.exit(2)
+
+    return str(ip)
 
 
 def change_zone_ip(section, new_ip):
@@ -81,8 +103,8 @@ def read_config(config_path):
 
 
 def main():
-    SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-    path = os.path.join(SCRIPT_DIR, "config.txt")
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    path = os.path.join(script_dir, "config.txt")
     config = read_config(path)
     if not config:
         sys.exit("please fill in the 'config.txt' file")
@@ -97,14 +119,14 @@ def main():
             continue
         else:
             print(
-                "DNS Mistmatch detected: A-record: ",
+                "DNS Mistmatch detected:  A-record:",
                 zone_ip,
-                " WAN IP: ",
+                " WAN IP:",
                 current_ip,
             )
             change_zone_ip(config[section], current_ip)
             zone_ip = get_zone_ip(config[section])
-            print("DNS A record update complete - set to ", zone_ip)
+            print("DNS A record update complete - set to: ", zone_ip)
 
 
 if __name__ == "__main__":
